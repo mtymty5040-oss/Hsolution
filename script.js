@@ -1,35 +1,78 @@
-let cart = JSON.parse(localStorage.getItem("hsolution_cart") || "[]");
+let cart = JSON.parse(localStorage.getItem("hsolutionCart") || "[]");
 
-function saveCart(){localStorage.setItem("hsolution_cart",JSON.stringify(cart));updateCount();}
-function updateCount(){document.getElementById("cartCount").textContent=cart.reduce((s,i)=>s+i.qty,0);}
-function addCart(name,price){
-  const item=cart.find(i=>i.name===name);
-  if(item)item.qty++; else cart.push({name,price,qty:1});
-  saveCart(); alert("장바구니에 담았습니다.");
+function saveCart(){
+  localStorage.setItem("hsolutionCart", JSON.stringify(cart));
+  renderCart();
 }
-function buyNow(name,price){cart=[{name,price,qty:1}];saveCart();openOrder();}
-function openCart(){renderCart();document.getElementById("cartModal").classList.add("show");}
-function closeCart(){document.getElementById("cartModal").classList.remove("show");}
+
+function addCart(name, price){
+  const item = cart.find(x => x.name === name);
+  if(item) item.qty++;
+  else cart.push({name, price, qty:1});
+  saveCart();
+  showToast(name + "을(를) 장바구니에 담았습니다.");
+}
+
+function changeQty(index, amount){
+  cart[index].qty += amount;
+  if(cart[index].qty <= 0) cart.splice(index,1);
+  saveCart();
+}
+
 function renderCart(){
-  const box=document.getElementById("cartItems");
-  if(!cart.length){box.innerHTML='<div class="empty">장바구니가 비어 있습니다.</div>';document.getElementById("cartTotal").textContent="0원";return;}
-  box.innerHTML=cart.map((i,n)=>`<div class="cart-row"><div><b>${i.name}</b><br><span>${money(i.price)}</span></div><div class="qty"><button onclick="changeQty(${n},-1)">−</button> ${i.qty} <button onclick="changeQty(${n},1)">+</button><br><button onclick="removeItem(${n})" style="margin-top:6px;border:0;background:none;color:#888">삭제</button></div></div>`).join("");
-  document.getElementById("cartTotal").textContent=money(cart.reduce((s,i)=>s+i.price*i.qty,0));
+  const count = cart.reduce((s,x)=>s+x.qty,0);
+  document.getElementById("cartCount").textContent = count;
+
+  const box = document.getElementById("cartItems");
+
+  if(!cart.length){
+    box.innerHTML = '<p style="color:#888">장바구니가 비어 있습니다.</p>';
+  }else{
+    box.innerHTML = cart.map((x,i)=>`
+      <div class="cart-item">
+        <strong>${x.name}</strong>
+        <div>${(x.price*x.qty).toLocaleString()}원</div>
+        <div class="qty">
+          <button onclick="changeQty(${i},-1)">−</button>
+          <span>${x.qty}</span>
+          <button onclick="changeQty(${i},1)">+</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  const total = cart.reduce((s,x)=>s+x.price*x.qty,0);
+  document.getElementById("cartTotal").textContent =
+    total.toLocaleString()+"원";
 }
-function changeQty(n,d){cart[n].qty+=d;if(cart[n].qty<=0)cart.splice(n,1);saveCart();renderCart();}
-function removeItem(n){cart.splice(n,1);saveCart();renderCart();}
-function money(n){return n.toLocaleString("ko-KR")+"원";}
-function checkout(){if(!cart.length){alert("장바구니가 비어 있습니다.");return;}closeCart();openOrder();}
-function openOrder(){
-  document.getElementById("orderSummary").innerHTML=cart.map(i=>`<div class="cart-row"><span>${i.name} × ${i.qty}</span><b>${money(i.price*i.qty)}</b></div>`).join("")+`<div class="total"><span>총 주문금액</span><b>${money(cart.reduce((s,i)=>s+i.price*i.qty,0))}</b></div>`;
-  document.getElementById("orderModal").classList.add("show");
+
+function toggleCart(){
+  document.getElementById("cartPanel").classList.toggle("open");
 }
-function closeOrder(){document.getElementById("orderModal").classList.remove("show");}
+
+function showToast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;
+  t.style.display="block";
+  setTimeout(()=>t.style.display="none",1800);
+}
+
 function submitOrder(e){
   e.preventDefault();
-  const name=document.getElementById("buyerName").value;
-  const phone=document.getElementById("buyerPhone").value;
-  const address=document.getElementById("buyerAddress").value;
-  alert(`주문서가 작성되었습니다.\n\n주문자: ${name}\n연락처: ${phone}\n배송지: ${address}\n\n현재는 테스트 버전이라 실제 결제/주문 전송은 연결되지 않았습니다.`);
+
+  if(!cart.length){
+    showToast("먼저 상품을 장바구니에 담아주세요.");
+    return;
+  }
+
+  const items=cart.map(x=>`${x.name} ${x.qty}개`).join(", ");
+
+  alert(
+    "주문 확인\n\n" +
+    "상품: " + items +
+    "\n\n※ 현재는 테스트용 주문 화면입니다. " +
+    "실제 주문 전송/결제 기능은 아직 연결되지 않았습니다."
+  );
 }
-updateCount();
+
+renderCart();
